@@ -4,14 +4,37 @@ from bs4 import BeautifulSoup
 from nltk import tokenize
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
-from HTMLParser import HTMLParser
 import os
 import sys
+
+FAKE_DOMAINS = [
+	"abcnews",
+	"now8news",
+	"celebtricity",
+	"infowars",
+	"naturalnews",
+	"libertywritersnews",
+	"thelastlineofdefense",
+	"prntly",
+	"newshounds",
+	"americannews",
+]
+
+SATIRE_DOMAINS = [
+	"clickhole",
+	"theonion",
+	"newyorker",
+]
+
+RECOGNIZED_DOMAINS = [
+	"cnn",
+	"nytimes",
+	"npr",
+]
 
 def print_sentiment(ss):
 	for k in sorted(ss):
 		print('{0}: {1}, '.format(k, ss[k]), end='')
-	print()
 
 class SentimentAnalysis:
 	def __init__(self, soup):
@@ -43,8 +66,7 @@ class SentimentAnalysis:
 		if title is not None:
 			sentences.extend(title.get_text())
 
-		h = HTMLParser()
-		paragraphs = [h.unescape(p.get_text()) for p in soup.find_all('p')]
+		paragraphs = [p.get_text() for p in soup.find_all('p')]
 		for p in paragraphs:
 			sentences.extend(tokenize.sent_tokenize(p))
 
@@ -56,14 +78,50 @@ if __name__ == '__main__':
 		print("Missing data directory")
 
 	files = [f for f in os.listdir(DATA_DIR) if os.path.isfile(os.path.join(DATA_DIR, f))]
+	files = [f for f in files if not f.startswith('.')]
 	image_files = [f for f in files if f.endswith('.images.html')]
 	text_files = [f for f in files if f not in image_files]
 
-	for file in text_files:
-		path = os.path.join(DATA_DIR, file)
+	fake = []
+	satire = []
+	recognized = []
+
+	for f in text_files:
+		path = os.path.join(DATA_DIR, f)
 		soup = None
 		with open(path, 'r') as htmlfile:
 			soup = BeautifulSoup(htmlfile, 'html.parser')
 		sa = SentimentAnalysis(soup)
 		ss = sa.get_sentiment()
-		print("{0}: {1}".format(file, ss['compound']))
+
+		for domain in FAKE_DOMAINS:
+			if f.find(domain) != -1:
+				fake.append((f, ss))
+
+		for domain in SATIRE_DOMAINS:
+			if f.find(domain) != -1:
+				satire.append((f, ss))
+
+		for domain in RECOGNIZED_DOMAINS:
+			if f.find(domain) != -1:
+				recognized.append((f, ss))
+
+	print("FAKE NEWS ---------------------")
+	for f, ss in fake:
+		print("{0}: ".format(f), end='')
+		print_sentiment(ss)
+		print()		
+
+	print("SATIRE NEWS ---------------------")
+	for f, ss in satire:
+		print("{0}: ".format(f), end='')
+		print_sentiment(ss)
+		print()	
+
+	print("RECOGNIZED NEWS ---------------------")
+	for f, ss in recognized:
+		print("{0}: ".format(f), end='')
+		print_sentiment(ss)
+		print()	
+
+	#print("{0}: {1}".format(file, ss['compound']))
