@@ -1,0 +1,1 @@
+curl -X POST -H "Content-Type: application/json" -d '{"image_url":"http://now8news.com/wp-content/uploads/2016/11/PARASITE.jpg"}' http://localhost:5000/search
